@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -24,7 +25,7 @@ namespace ArduinoControl
         {
             short[] buffer = new short[BufferSamples];
             int readOffset = 0;
-            //ArduinoControl arduino = new ArduinoControl("COM3");
+            ArduinoControl arduino = new ArduinoControl("COM3");
             using (WasapiCapture capture = new WasapiCapture(false, CSCore.CoreAudioAPI.AudioClientShareMode.Exclusive, 0))
             {
                 capture.Initialize();
@@ -38,25 +39,22 @@ namespace ArduinoControl
                     WriteSamples(e.Data, nSamplesToFill * SampleSize, buffer, 0, nNewSamples - nSamplesToFill);
                     // update circular buffer position
                     int newReadOffset = (readOffset + nNewSamples) % BufferSamples;
-                    // do stuff twice per buffer fill
+                    // update arduino twice per buffer fill
                     if ((newReadOffset >= BufferSamples / 2 && readOffset < BufferSamples / 2) ||
                         (newReadOffset < BufferSamples / 2 && readOffset >= BufferSamples / 2))
                     {
-                        short[] firstPart = buffer.Skip(newReadOffset).ToArray();
-                        short[] secondPart = buffer.Take(newReadOffset).ToArray();
+                        // Compute Fourier transform of most recent window of audio data
                         Complex[] fourierSamples = (buffer.Skip(newReadOffset).Concat(buffer.Take(newReadOffset))).Select(x => new Complex(x, 0)).ToArray();
                         Fourier.Radix2Forward(fourierSamples, FourierOptions.Default);
-
+                        // TODO: do stuff
+                        Visualize(fourierSamples, arduino);
                     }
                     readOffset = newReadOffset;
                 };
 
-                //start recording
+                // Record & update arduino until keypress
                 capture.Start();
-
                 Console.ReadKey();
-
-                //stop recording
                 capture.Stop();
             }
         }
@@ -67,6 +65,27 @@ namespace ArduinoControl
             {
                 dest[destOffset + i] = BitConverter.ToInt16(sampleBytes, sourceOffset + i * 2 * sizeof(short)); // skip every other sample
             }
+        }
+
+        static void Visualize(Complex[] fourierOutput, ArduinoControl arduino)
+        {
+            Color vizColor = new Color();
+            for (int i = 0; i < fourierOutput.Length / 2; i++) // divide by 2 b/c nyquist limit
+            {
+                float freq = 44100 * i / fourierOutput.Length;
+                double power = fourierOutput[i].Real * fourierOutput[i].Real + fourierOutput[i].Imaginary * fourierOutput[i].Imaginary;
+                float note = midiNote(freq) % 12;
+            }
+        }
+
+        static float midiNote(float frequency)
+        {
+            return (float)(69 + 12 * Math.Log(frequency / 440, 2));
+        }
+
+        static Color ColorFromHSL()
+        {
+
         }
     }
 }

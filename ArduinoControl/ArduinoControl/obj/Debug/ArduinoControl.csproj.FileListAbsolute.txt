@@ -16,3 +16,5 @@ C:\Users\eddie_000\prog\visualight\ArduinoControl\ArduinoControl\bin\Debug\CSCor
 C:\Users\eddie_000\prog\visualight\ArduinoControl\ArduinoControl\obj\Debug\ArduinoControl.csprojResolveAssemblyReference.cache
 C:\Users\Eddie\prog\aod\proj\ArduinoControl\ArduinoControl\bin\Debug\MathNet.Numerics.dll
 C:\Users\Eddie\prog\aod\proj\ArduinoControl\ArduinoControl\bin\Debug\MathNet.Numerics.xml
+C:\Users\eddie_000\prog\visualight\ArduinoControl\ArduinoControl\bin\Debug\MathNet.Numerics.dll
+C:\Users\eddie_000\prog\visualight\ArduinoControl\ArduinoControl\bin\Debug\MathNet.Numerics.xml
