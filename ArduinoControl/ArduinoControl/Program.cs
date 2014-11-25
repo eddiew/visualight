@@ -23,15 +23,16 @@ namespace ArduinoControl
             {
                 Console.WriteLine(device.Name);
             }
-            while(true)
-            {
-                string s = Console.ReadLine();
-                if (s.Equals("q"))
-                {
-                    break;
-                }
-                arduino.sendCommand(s);
-            }
+            recorder.record();
+            //while(true)
+            //{
+            //    string s = Console.ReadLine();
+            //    if (s.Equals("q"))
+            //    {
+            //        break;
+            //    }
+            //    arduino.sendCommand(s);
+            //}
         }
     }
 }
