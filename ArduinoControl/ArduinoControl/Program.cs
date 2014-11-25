@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using CSCore;
@@ -9,45 +10,45 @@ using CSCore.Codecs.WAV;
 using CSCore.SoundIn;
 using CSCore.Streams;
 using CSCore.DSP;
+using MathNet.Numerics.IntegralTransforms;
 
 namespace ArduinoControl
 {
     class Program
     {
-        const int BufferSize = 44100 * sizeof(short) * 2 / 10;
-        static short[] buffer = new short[BufferSize];
-        static int ReadOffset = 0;
+        const int BufferSamples = 4096;
+        const int SampleSize = 4; // 2 shorts per sample
+        const int BufferSize = BufferSamples * SampleSize;
 
         static void Main(string[] args)
         {
-            ArduinoControl arduino = new ArduinoControl("COM3");
-
-            //while(true)
-            //{
-            //    string s = Console.ReadLine();
-            //    if (s.Equals("q"))
-            //    {
-            //        break;
-            //    }
-            //    arduino.sendCommand(s);
-            //}
+            short[] buffer = new short[BufferSamples];
+            int readOffset = 0;
+            //ArduinoControl arduino = new ArduinoControl("COM3");
             using (WasapiCapture capture = new WasapiCapture(false, CSCore.CoreAudioAPI.AudioClientShareMode.Exclusive, 0))
             {
                 capture.Initialize();
                 //setup an eventhandler to receive the recorded data
                 capture.DataAvailable += (s, e) =>
                 {
-                    int bytesToWrite = Math.Min(e.ByteCount, BufferSize - ReadOffset);
+                    int nNewSamples = e.ByteCount / SampleSize;
+                    int nSamplesToFill = Math.Min(nNewSamples, BufferSamples - readOffset);
                     //save the recorded audio
-                    w.Write(e.Data, e.Offset, bytesToWrite);
-                    w.Write(e.Data.Skip(bytesToWrite).ToArray(), 0, e.ByteCount - bytesToWrite);
-                    int newReadOffset = (ReadOffset + e.ByteCount) % BufferSize;
-                    if ((newReadOffset >= BufferSize / 2 && ReadOffset < BufferSize / 2) ||
-                        (newReadOffset < BufferSize / 2 && ReadOffset >= BufferSize / 2))
+                    WriteSamples(e.Data, 0, buffer, readOffset, nSamplesToFill);
+                    WriteSamples(e.Data, nSamplesToFill * SampleSize, buffer, 0, nNewSamples - nSamplesToFill);
+                    // update circular buffer position
+                    int newReadOffset = (readOffset + nNewSamples) % BufferSamples;
+                    // do stuff twice per buffer fill
+                    if ((newReadOffset >= BufferSamples / 2 && readOffset < BufferSamples / 2) ||
+                        (newReadOffset < BufferSamples / 2 && readOffset >= BufferSamples / 2))
                     {
+                        short[] firstPart = buffer.Skip(newReadOffset).ToArray();
+                        short[] secondPart = buffer.Take(newReadOffset).ToArray();
+                        Complex[] fourierSamples = (buffer.Skip(newReadOffset).Concat(buffer.Take(newReadOffset))).Select(x => new Complex(x, 0)).ToArray();
+                        Fourier.Radix2Forward(fourierSamples, FourierOptions.Default);
 
                     }
-                    ReadOffset = newReadOffset;
+                    readOffset = newReadOffset;
                 };
 
                 //start recording
@@ -60,6 +61,12 @@ namespace ArduinoControl
             }
         }
 
-        void fourierTransform(MemoryStream )
+        static void WriteSamples(byte[] sampleBytes, int sourceOffset, short[] dest, int destOffset, int samplesToWrite)
+        {
+            for (var i = 0; i < samplesToWrite; i++)
+            {
+                dest[destOffset + i] = BitConverter.ToInt16(sampleBytes, sourceOffset + i * 2 * sizeof(short)); // skip every other sample
+            }
+        }
     }
 }
